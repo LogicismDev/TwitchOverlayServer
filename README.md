@@ -35,3 +35,4 @@ The only mandatory files required in the pages directory are the following below
 - 404.html
 - privacy.html
 - terms.html
+- overlay/predictions.html
