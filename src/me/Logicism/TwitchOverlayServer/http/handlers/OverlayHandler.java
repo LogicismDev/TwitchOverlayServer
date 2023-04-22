@@ -39,6 +39,25 @@ public class OverlayHandler implements HttpHandler {
             } else {
                 HTTPUtils.throwError(exchange, "URL does not have id query!");
             }
+        } else if (exchange.getRequestURI().toString().startsWith("/overlay/polls")) {
+            Map<String, String> queryMap = TextUtils.queryToMap(exchange.getRequestURI().getQuery());
+            if (queryMap.containsKey("id")) {
+                if (TwitchOverlayServer.INSTANCE.containsUserTokenHandle(queryMap.get("id"),
+                        "channel:read:polls")) {
+                    if (HTTPUtils.containsFile("/overlay/polls-premium/" + queryMap.get("id") + ".html")) {
+                        HTTPUtils.throwSuccessPage(exchange, HTTPUtils.getFile("/overlay/polls-premium/" + queryMap.get("id") + ".html"));
+                    } else {
+                        String response = FileUtils.fileToString(HTTPUtils.getFile("/overlay/polls.html"))
+                                .replace("{user_id}", queryMap.get("id"));
+
+                        HTTPUtils.throwSuccessHTML(exchange, response);
+                    }
+                } else {
+                    HTTPUtils.throwError(exchange, "User is not authenticated! Please reauthenticate and refresh!");
+                }
+            } else {
+                HTTPUtils.throwError(exchange, "URL does not have id query!");
+            }
         } else {
             HTTPUtils.throwError(exchange, "Cannot find that overlay!");
         }

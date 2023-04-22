@@ -76,60 +76,121 @@ public class OverlayWebsocketServer extends WebSocketServer {
                     TokenHandle handle = TwitchOverlayServer.INSTANCE.getTokenHandle(messageObject
                                     .getString("user_id"), messageObject.getString("scope"));
 
-                    if (handle.isExpired()) {
+                    if (handle != null) {
+                        if (handle.isExpired()) {
+                            try {
+                                handle.refreshToken(messageObject.getString("user_agent"));
+
+                                if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
+                                            .cancel(true);
+
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
+                                            TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                                    .schedule(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            handle.setExpired(true);
+                                                        }
+                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                                } else {
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
+                                            .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                                    .schedule(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            handle.setExpired(true);
+                                                        }
+                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        Map<String, String> headers = new HashMap<>();
+
+                        headers.put("User-Agent", messageObject.getString("user_agent"));
+                        headers.put("Authorization", "Bearer " + handle.getAccessToken());
+                        headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
+
                         try {
-                            handle.refreshToken(messageObject.getString("user_agent"));
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "https://api.twitch.tv/helix/predictions?broadcaster_id="
+                                            + messageObject.getString("user_id")), headers);
 
-                            if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
-                                TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
-                                        .cancel(true);
+                            JSONObject predictionObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()))
+                                    .getJSONArray("data").getJSONObject(0);
 
-                                TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
-                                        TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                .schedule(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                handle.setExpired(true);
-                                            }
-                                        }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-                            } else {
-                                TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
-                                        .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                .schedule(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                handle.setExpired(true);
-                                            }
-                                        }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                            if (predictionObject.getString("status").equals("ACTIVE")) {
+                                predictionObject.put("type", "channel.prediction.begin");
+                                webSocket.send(predictionObject.toString());
+                            } else if (predictionObject.getString("status").equals("LOCKED")) {
+                                predictionObject.put("type", "channel.prediction.lock");
+                                webSocket.send(predictionObject.toString());
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
+                } else if (messageObject.has("scope") && messageObject.getString("scope")
+                        .startsWith("channel:read:polls")) {
+                    TokenHandle handle = TwitchOverlayServer.INSTANCE.getTokenHandle(messageObject
+                            .getString("user_id"), messageObject.getString("scope"));
 
-                    Map<String, String> headers = new HashMap<>();
+                    if (handle != null) {
+                        if (handle.isExpired()) {
+                            try {
+                                handle.refreshToken(messageObject.getString("user_agent"));
 
-                    headers.put("User-Agent", messageObject.getString("user_agent"));
-                    headers.put("Authorization", "Bearer " + handle.getAccessToken());
-                    headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
+                                if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
+                                            .cancel(true);
 
-                    try {
-                        BrowserData bd = BrowserClient.executeGETRequest(new URL(
-                                "https://api.twitch.tv/helix/predictions?broadcaster_id="
-                                        + messageObject.getString("user_id")), headers);
-
-                        JSONObject predictionObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()))
-                                .getJSONArray("data").getJSONObject(0);
-
-                        if (predictionObject.getString("status").equals("ACTIVE")) {
-                            predictionObject.put("type", "channel.prediction.begin");
-                            webSocket.send(predictionObject.toString());
-                        } else if (predictionObject.getString("status").equals("LOCKED")) {
-                            predictionObject.put("type", "channel.prediction.lock");
-                            webSocket.send(predictionObject.toString());
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
+                                            TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                                    .schedule(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            handle.setExpired(true);
+                                                        }
+                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                                } else {
+                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
+                                            .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                                    .schedule(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            handle.setExpired(true);
+                                                        }
+                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+
+                        Map<String, String> headers = new HashMap<>();
+
+                        headers.put("User-Agent", messageObject.getString("user_agent"));
+                        headers.put("Authorization", "Bearer " + handle.getAccessToken());
+                        headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
+
+                        try {
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "https://api.twitch.tv/helix/polls?broadcaster_id="
+                                            + messageObject.getString("user_id")), headers);
+
+                            JSONObject pollObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()))
+                                    .getJSONArray("data").getJSONObject(0);
+
+                            if (pollObject.getString("status").equals("ACTIVE")) {
+                                pollObject.put("type", "channel.poll.begin");
+                                webSocket.send(pollObject.toString());
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
 

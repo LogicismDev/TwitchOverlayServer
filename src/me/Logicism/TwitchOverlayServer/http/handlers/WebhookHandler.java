@@ -31,7 +31,19 @@ public class WebhookHandler implements HttpHandler {
                             && exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Timestamp"
                             .toLowerCase()) && exchange.getRequestHeaders().containsKey(
                                     "Twitch-Eventsub-Message-Signature".toLowerCase())) {
-                        String user_id = exchange.getRequestURI().toString().substring("/webhook/predictions/".length());
+                        JSONObject bodyObject = new JSONObject(body);
+
+                        String overlaySubBaseURL = "";
+                        if (bodyObject.getJSONObject("subscription").getString("type")
+                                .startsWith("channel.prediction")) {
+                            overlaySubBaseURL = "predictions";
+                        } else if (bodyObject.getJSONObject("subscription").getString("type")
+                                .startsWith("channel.poll")) {
+                            overlaySubBaseURL = "polls";
+                        }
+
+                        String user_id = exchange.getRequestURI().toString().substring(("/webhook/" + overlaySubBaseURL
+                                + "/").length());
                         String hmac = exchange.getRequestHeaders().get("Twitch-Eventsub-Message-Id".toLowerCase())
                                 .get(0) + exchange.getRequestHeaders().get("Twitch-Eventsub-Message-Timestamp"
                                 .toLowerCase()).get(0) + body;
@@ -76,6 +88,14 @@ public class WebhookHandler implements HttpHandler {
                         TwitchOverlayServer.INSTANCE.getTokenHandleList()
                                 .remove(TwitchOverlayServer.INSTANCE
                                         .getTokenHandle(user_id, "channel:read:predictions"));
+                    } else if (bodyObject.getJSONObject("subscription").getString("type")
+                            .startsWith("channel.poll")) {
+                        String user_id = bodyObject.getJSONObject("subscription").getJSONObject("condition")
+                                .getString("broadcaster_user_id");
+
+                        TwitchOverlayServer.INSTANCE.getTokenHandleList()
+                                .remove(TwitchOverlayServer.INSTANCE
+                                        .getTokenHandle(user_id, "channel:read:polls"));
                     }
 
                     HTTPUtils.throwSuccess(exchange);

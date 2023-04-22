@@ -110,34 +110,35 @@ public class TokenHandler implements HttpHandler {
                 }
 
                 String overlaySubBaseURL = "";
+
+                headers.put("Content-Type", "application/json");
+
+                if (TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().isExpired()) {
+                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
+                            .refreshToken("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                                    "(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
+
+
+                    if (!TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration().isDone()) {
+                        TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration()
+                                .cancel(true);
+
+                        TwitchOverlayServer.INSTANCE.setAppAccessTokenExpiration(
+                                TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                        .schedule(new Runnable() {
+                                                      @Override
+                                                      public void run() {
+                                                          TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().setExpired(true);
+                                                      }
+                                                  }, TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getTimeToExpire(),
+                                                TimeUnit.SECONDS));
+                    }
+                }
+                headers.replace("Authorization", "Bearer " + TwitchOverlayServer.INSTANCE
+                        .getAppAccessTokenHandle().getAccessToken());
+
                 if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:predictions")) {
                     overlaySubBaseURL = "/predictions";
-
-                    headers.put("Content-Type", "application/json");
-
-                    if (TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().isExpired()) {
-                        TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
-                                .refreshToken("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                                        "(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
-
-
-                        if (!TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration().isDone()) {
-                            TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration()
-                                    .cancel(true);
-
-                            TwitchOverlayServer.INSTANCE.setAppAccessTokenExpiration(
-                                    TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                            .schedule(new Runnable() {
-                                                          @Override
-                                                          public void run() {
-                                                              TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().setExpired(true);
-                                                          }
-                                                      }, TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getTimeToExpire(),
-                                                    TimeUnit.SECONDS));
-                        }
-                    }
-                    headers.replace("Authorization", "Bearer " + TwitchOverlayServer.INSTANCE
-                            .getAppAccessTokenHandle().getAccessToken());
 
                     bd = BrowserClient.executeGETRequest(new URL(
                             "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
@@ -171,6 +172,37 @@ public class TokenHandler implements HttpHandler {
                     if (hasEventHandler(eventSubObject, "channel.prediction.end",
                             userObject.getString("id"), overlaySubBaseURL)) {
                         registerEventSub("channel.prediction.end", userObject.getString("id"),
+                                exchange.getRequestHeaders().get("User-Agent").get(0),
+                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                overlaySubBaseURL);
+                    }
+                } else if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:polls")) {
+                    overlaySubBaseURL = "/polls";
+
+                    bd = BrowserClient.executeGETRequest(new URL(
+                            "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
+
+                    JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
+
+                    if (hasEventHandler(eventSubObject, "channel.poll.begin",
+                            userObject.getString("id"), overlaySubBaseURL)) {
+                        registerEventSub("channel.poll.begin", userObject.getString("id"),
+                                exchange.getRequestHeaders().get("User-Agent").get(0),
+                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                overlaySubBaseURL);
+                    }
+
+                    if (hasEventHandler(eventSubObject, "channel.poll.progress",
+                            userObject.getString("id"), overlaySubBaseURL)) {
+                        registerEventSub("channel.poll.progress", userObject.getString("id"),
+                                exchange.getRequestHeaders().get("User-Agent").get(0),
+                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                overlaySubBaseURL);
+                    }
+
+                    if (hasEventHandler(eventSubObject, "channel.poll.end",
+                            userObject.getString("id"), overlaySubBaseURL)) {
+                        registerEventSub("channel.poll.end", userObject.getString("id"),
                                 exchange.getRequestHeaders().get("User-Agent").get(0),
                                 TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
                                 overlaySubBaseURL);
