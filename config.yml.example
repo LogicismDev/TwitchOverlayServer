@@ -1,0 +1,26 @@
+# The IP to bind to the WebSocket Server
+webSocketIP: 0.0.0.0
+
+# The Port to bind to the WebSocket Server
+webSocketPort: 8088
+
+# The IP to bind to the HTTP Server
+httpServerIP: 0.0.0.0
+
+# The Port to bind to the HTTP Server
+httpServerPort: 8089
+
+# The Client ID to use for the Twitch Authorization
+clientID: your_client_id
+
+# The Client Secret to use for the Twitch Authorization
+clientSecret: your_client_secret
+
+# The callback URI to use for the Twitch Authorization
+callbackURI: https://callback_uri/callback
+
+# The overlay Base URL to use for users using the overlay
+overlayBaseURL: https://overlay_base_url
+
+# The Webhook secret to use to verify Webhook messages from Twitch. This can be a random string.
+webhookSecret: random_webhook_secret_string

@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Logicism's Twitch Prediction Overlay</title>
+    <link href="/css/index.css" rel="stylesheet" type="text/css">
+    <link href="/css/predictions.css" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#0084ff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Logicism's Twitch Overlays">
+    <meta property="og:url" content="https://overlay.logicism.tv/">
+    <meta property="og:image" content="https://logicism.tv/img/card-banner.png">
+    <meta property="og:description" content="The Official Website of Live Streamer, Content Creator, Programmer and Graphic Designer Logicism!">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="overlay.logicism.tv">
+    <meta property="twitter:url" content="https://overlay.logicism.tv/">
+    <meta property="twitter:title" content="Logicism's Twitch Overlays">
+    <meta property="twitter:description" content="Logicism's Twitch Overlays Programmed in HTML, CSS, Javascript with Twitch's API">
+    <meta property="twitter:image" content="https://logicism.tv/img/card-banner.png">
+</head>
+<body>
+<div class="prediction-overlay" style="display: none;">
+    <div class="prediction-title">
+        <div class="prediction-time-text" style="display: none;">00:00 </div>
+        <div class="prediction-title-text">STREAM TITLE</div>
+    </div>
+    <div class="prediction-children"> </div>
+</div>
+<script>
+const openSocket = () => {
+    let countdownTimerId = 0;
+    let timeoutId = 0;
+    sock = new WebSocket("wss://ws.logicism.tv");
+
+    sock.addEventListener("open", e => {
+        console.log("Connected to WebSocket Server");
+    });
+
+    sock.addEventListener("message", e => {
+        const messageObj = JSON.parse(e.data);
+
+        if (messageObj.subscription != undefined) {
+            if (messageObj.subscription.type == "channel.prediction.begin") {
+                if (timeoutId != 0) {
+                    clearTimeout(timeoutId);
+                    timeoutId = 0;
+                }
+
+                if (countdownTimerId != 0) {
+                    clearInterval(countdownTimerId);
+                    countdownTimerId = 0;
+                }
+
+                document.getElementsByClassName("prediction-children")[0].innerHTML = "";
+                document.getElementsByClassName("prediction-title-text")[0].innerHTML = messageObj.event.title;
+
+                let totalChannelPoints = 0;
+
+                for (let i = 0; i < messageObj.event.outcomes.length; i++) {
+                    totalChannelPoints += messageObj.event.outcomes[i].channel_points;
+                }
+
+                for (let i = 0; i < messageObj.event.outcomes.length; i++) {
+                    document.getElementsByClassName("prediction-children")[0].innerHTML +=
+                        '<div class="prediction-child ' + messageObj.event.outcomes[i].id + '"> <div class="progress-bar-stats"> <div class="progress-bar-stats-child"> <div class="progress-bar-points"><span class="progress-bar-points-text"> 0 </span><svg width="14px" height="14px" viewBox="0 0 20 20" x="0px" y="0px" fill="white"> <g> <path d="M10 6a4 4 0 014 4h-2a2 2 0 00-2-2V6z"></path> <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-2 0a6 6 0 11-12 0 6 6 0 0112 0z" fill-rule="evenodd" clip-rule="evenodd"></path> </g> </svg> </div> </div> <div class="progress-bar-stats-child"> <div class="progress-bar-users"><span class="progress-bar-users-text"> 0 </span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16"> <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/> </svg> </div> </div> <div class="progress-bar-stats-child"> <div class="progress-bar-text">' + messageObj.event.outcomes[i].title + '</div> </div> </div> <div class="progress-bar"> <div class="prediction-outcome progress-bar-foreground-1' + '" style="width: 0%; content: 0%;"></div> </div> </div>';
+                }
+
+                let timeToLock = new Date(messageObj.event.locks_at);
+                document.getElementsByClassName("prediction-time-text")[0].innerHTML = "00:00 ";
+                document.getElementsByClassName("prediction-time-text")[0].setAttribute("style", "display: inline-block;");
+
+                countdownTimerId = setInterval(function () {
+                    let now = new Date().getTime();
+                    let timeleft = timeToLock - now;
+
+                    if (timeleft > 0) {
+                        let minutes = Math.floor((timeleft % (1000 * 60 * 60)) / (1000 * 60));
+                        let seconds = Math.floor((timeleft % (1000 * 60)) / 1000) - 4;
+
+                        document.getElementsByClassName("prediction-time-text")[0].innerHTML = String(minutes).padStart(2, '0') + ":" + String(seconds).padStart(2, '0') + " ";
+                    }
+                }, 1000);
+
+
+                if (document.getElementsByClassName("prediction-overlay")[0].getAttribute("style") != "display: inherit;") {
+                    document.getElementsByClassName("prediction-overlay")[0].setAttribute("style", "display: inherit;");
+                }
+
+                console.log("Displaying Prediction Overlay");
+            } else if (messageObj.subscription.type == "channel.prediction.progress") {
+                let totalChannelPoints = 0;
+
+                for (let i = 0; i < messageObj.event.outcomes.length; i++) {
+                    totalChannelPoints += messageObj.event.outcomes[i].channel_points;
+                }
+
+                for (let i = 0; i < messageObj.event.outcomes.length; i++) {
+                    document.getElementsByClassName(messageObj.event.outcomes[i].id)[0].getElementsByClassName("prediction-outcome")[0].setAttribute("style", "width:" + ((messageObj.event.outcomes[i].channel_points / totalChannelPoints) * 100) + "%;");
+                    document.getElementsByClassName(messageObj.event.outcomes[i].id)[0].getElementsByClassName("progress-bar-points-text")[0].innerHTML = " " + messageObj.event.outcomes[i].channel_points.toLocaleString("en-US") + " ";
+                    document.getElementsByClassName(messageObj.event.outcomes[i].id)[0].getElementsByClassName("progress-bar-users-text")[0].innerHTML = " " + messageObj.event.outcomes[i].users.toLocaleString("en-US") + " ";
+                }
+
+                console.log("Updating Prediction Overlay");
+            } else if (messageObj.subscription.type == "channel.prediction.lock") {
+                if (countdownTimerId != 0) {
+                    clearInterval(countdownTimerId);
+                    countdownTimerId = 0;
+                }
+
+                document.getElementsByClassName("prediction-title-text")[0].innerHTML = '<i class="fa-solid fa-lock"></i> ' + messageObj.event.title;
+
+                document.getElementsByClassName("prediction-time-text")[0].innerHTML = "00:00 ";
+                document.getElementsByClassName("prediction-time-text")[0].setAttribute("style", "display: none;");
+
+                console.log("Displaying Locked Symbol");
+            } else if (messageObj.subscription.type == "channel.prediction.end") {
+                if (countdownTimerId != 0) {
+                    clearInterval(countdownTimerId);
+                    countdownTimerId = 0;
+
+                    document.getElementsByClassName("prediction-time-text")[0].innerHTML = "00:00 ";
+                    document.getElementsByClassName("prediction-time-text")[0].setAttribute("style", "display: none;");
+                }
+
+                if (messageObj.event.winning_outcome_id != "") {
+                    document.getElementsByClassName(messageObj.event.winning_outcome_id)[0].getElementsByClassName("progress-bar-text")[0].innerHTML = '<i class="fa-solid fa-check"></i> ' + document.getElementsByClassName(messageObj.event.winning_outcome_id)[0].getElementsByClassName("progress-bar-text")[0].innerHTML;
+
+                    console.log("Displaying Check Symbol on " + messageObj.event.winning_outcome_id);
+
+                    document.getElementsByClassName("prediction-title-text")[0].innerHTML = '<i class="fa-solid fa-flag-checkered"></i> ' + messageObj.event.title;
+
+                    console.log("Displaying Flag Symbol");
+                } else {
+                    document.getElementsByClassName("prediction-title-text")[0].innerHTML = '<i class="fa-solid fa-circle-xmark"></i> ' + messageObj.event.title;
+
+                    console.log("Displaying XMark Symbol");
+                }
+
+                timeoutId = setTimeout(function () {
+                    document.getElementsByClassName("prediction-overlay")[0].setAttribute("style", "display: none;");
+
+                    console.log("Removing Prediction Overlay");
+
+                    timeoutId = 0;
+                }, 60000);
+            }
+        } else {
+            if (messageObj.type == "welcome") {
+                sock.send(JSON.stringify({
+                    session_id: messageObj.session_id,
+                    type: "welcome",
+                    user_id: "{user_id}",
+                    scope: "channel:read:predictions",
+                    user_agent: navigator.userAgent
+                }));
+            } else if (messageObj.type == "channel.prediction.begin" || messageObj.type == "channel.prediction.lock") {
+                document.getElementsByClassName("prediction-title-text")[0].innerHTML = messageObj.type == "channel.prediction.lock" ? '<i class="fa-solid fa-lock"></i> ' + messageObj.title : messageObj.title;
+
+                let totalChannelPoints = 0;
+
+                for (let i = 0; i < messageObj.outcomes.length; i++) {
+                    totalChannelPoints += messageObj.outcomes[i].channel_points;
+                }
+
+                for (let i = 0; i < messageObj.outcomes.length; i++) {
+                    document.getElementsByClassName("prediction-children")[0].innerHTML +=
+                        '<div class="prediction-child ' + messageObj.outcomes[i].id + '"> <div class="progress-bar-stats"> <div class="progress-bar-stats-child"> <div class="progress-bar-points"><span class="progress-bar-points-text"> ' + messageObj.outcomes[i].channel_points.toLocaleString("en-US") + ' </span><svg width="14px" height="14px" viewBox="0 0 20 20" x="0px" y="0px" fill="white"> <g> <path d="M10 6a4 4 0 014 4h-2a2 2 0 00-2-2V6z"></path> <path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-2 0a6 6 0 11-12 0 6 6 0 0112 0z" fill-rule="evenodd" clip-rule="evenodd"></path> </g> </svg> </div> </div> <div class="progress-bar-stats-child"> <div class="progress-bar-users"><span class="progress-bar-users-text"> ' + messageObj.outcomes[i].users.toLocaleString("en-US") + ' </span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people" viewBox="0 0 16 16"> <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/> </svg> </div> </div> <div class="progress-bar-stats-child"> <div class="progress-bar-text">' + messageObj.outcomes[i].title + '</div> </div> </div> <div class="progress-bar"> <div class="prediction-outcome progress-bar-foreground-1" style="width: ' + (totalChannelPoints != 0 ? Math.round((messageObj.outcomes[i].channel_points / totalChannelPoints) * 100) + '%; content: ' + Math.round((messageObj.outcomes[i].channel_points / totalChannelPoints) * 100) : '0%; content: 0%;') + '%"></div> </div> </div>';
+                }
+
+                document.getElementsByClassName("prediction-overlay")[0].setAttribute("style", "display: inherit;");
+
+                console.log("Displaying Prediction Overlay");
+            }
+        }
+    });
+
+    sock.addEventListener("close", e => {
+		document.getElementsByClassName("prediction-overlay")[0].setAttribute("class", "prediction-overlay");
+		document.getElementsByClassName("prediction-overlay")[0].setAttribute("style", "display: none;");
+		document.getElementsByClassName("prediction-children")[0].innerHTML = "";
+
+
+		setTimeout(function () {
+			console.log("Reconnecting to WebSocket Server in 3 seconds");
+
+			openSocket();
+		}, 3000)
+    });
+};
+
+openSocket();
+</script>
+</body>
+</html>
