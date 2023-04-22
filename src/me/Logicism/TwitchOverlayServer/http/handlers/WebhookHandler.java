@@ -21,7 +21,7 @@ public class WebhookHandler implements HttpHandler {
                 (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
                         exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
                         exchange.getRemoteAddress().getAddress()) + " - " +
-                exchange.getRequestHeaders().get("User-Agent").get(0) + " - /callback");
+                exchange.getRequestHeaders().get("User-Agent").get(0) + " - /webhook");
         if (exchange.getRequestMethod().equals("POST")) {
             if (exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Type".toLowerCase())) {
                 String body = BrowserClient.requestToString(exchange.getRequestBody());

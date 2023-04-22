@@ -18,7 +18,7 @@ public class OverlayHandler implements HttpHandler {
                 (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
                         exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
                         exchange.getRemoteAddress().getAddress()) + " - " +
-                exchange.getRequestHeaders().get("User-Agent").get(0) + " - /callback");
+                exchange.getRequestHeaders().get("User-Agent").get(0) + " - " + exchange.getRequestURI().toString());
 
         if (exchange.getRequestURI().toString().startsWith("/overlay/predictions")) {
             Map<String, String> queryMap = TextUtils.queryToMap(exchange.getRequestURI().getQuery());
