@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Logicism's Twitch Alert Box Overlay</title>
+    <link href="/css/index.css" rel="stylesheet" type="text/css">
+    <link href="/css/alertBox.css" rel="stylesheet" type="text/css">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#0084ff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Logicism's Twitch Overlays">
+    <meta property="og:url" content="https://overlay.logicism.tv/">
+    <meta property="og:image" content="https://logicism.tv/img/card-banner.png">
+    <meta property="og:description" content="The Official Website of Live Streamer, Content Creator, Programmer and Graphic Designer Logicism!">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="overlay.logicism.tv">
+    <meta property="twitter:url" content="https://overlay.logicism.tv/">
+    <meta property="twitter:title" content="Logicism's Twitch Overlays">
+    <meta property="twitter:description" content="Logicism's Twitch Overlays Programmed in HTML, CSS, Javascript with Twitch's API">
+    <meta property="twitter:image" content="https://logicism.tv/img/card-banner.png">
+</head>
+<body>
+<div class="alerts-overlay fadeIn" style="display: none;"> <img class="alert-image" src="https://media4.giphy.com/avatars/100soft/WahNEDdlGjRZ.gif" alt=""/>
+    <div class="alert-text">
+        <span class="alert-main-text"></span>
+        <span class="alert-sub-text"></span>
+    </div>
+    <audio class="alert-audio"></audio>
+</div>
+<script>
+const openSocket = () => {
+    let timeoutId = 0;
+	let timeoutId1 = 0;
+    sock = new WebSocket("wss://ws.logicism.tv");
+
+    sock.addEventListener("open", e => {
+        console.log("Connected to WebSocket Server");
+    });
+
+    sock.addEventListener("message", e => {
+        const messageObj = JSON.parse(e.data);
+
+        if (messageObj.subscription != undefined) {
+			if (timeoutId != 0) {
+                clearTimeout(timeoutId);
+                timeoutId = 0;
+            }
+			if (timeoutId1 != 0) {
+                clearTimeout(timeoutId1);
+                timeoutId1 = 0;
+            }
+
+            if (messageObj.subscription.type == "channel.follow") {
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.event.user_name + " is now following " + messageObj.event.broadcaster_user_name;
+			} else if (messageObj.subscription.type == "channel.subscribe" || messageObj.subscription.type == "channel.subscription.gift") {
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.event.user_name + " has subscribed to " + messageObj.event.broadcaster_user_name;
+			} else if (messageObj.subscription.type == "channel.raid") {
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.event.user_name + " is raiding with " + messageObj.event.viewers + " viewers";
+			} else if (messageObj.subscription.type == "channel.cheer") {
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.event.user_name + " has cheered with " + messageObj.event.bits + " bits";
+				document.getElementsByClassName("alert-sub-text")[0].innerHTML = messageObj.event.message;
+			} else if (messageObj.subscription.type == "channel.subscription.message") {
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.event.user_name + " has subscribed to " + messageObj.event.broadcaster_user_name;
+				document.getElementsByClassName("alert-sub-text")[0].innerHTML = messageObj.event.message;
+			}
+
+			if (document.getElementsByClassName("alerts-overlay")[0].getAttribute("style") != "display: inherit;") {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("style", "display: inherit;");
+			}
+			if (document.getElementsByClassName("alerts-overlay")[0].getAttribute("class") == "alerts-overlay fadeOut") {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("class", "alerts-overlay fadeIn");
+			}
+
+			let audioF = document.getElementsByClassName("alert-audio")[0];
+			audioF.src = "alert.mp3";
+			audioF.play();
+			audioF.onended = function() {
+				if (messageObj.subscription.type == "channel.cheer") {
+					audioF.src = "https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=" + messageObj.event.message;
+					audioF.play();
+
+					audioF.onended = undefined;
+				}
+			};
+
+			timeoutId = setTimeout(function () {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("class", "alerts-overlay fadeOut");
+
+				console.log("Removing Alerts Overlay");
+
+				timeoutId = 0;
+			}, 7000);
+
+			timeoutId1 = setTimeout(function () {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("style", "display: none;");
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = "";
+				document.getElementsByClassName("alert-sub-text")[0].innerHTML = "";
+
+				timeoutId1 = 0;
+			}, 8500);
+
+			console.log("Displaying Alerts Overlay");
+        } else {
+            if (messageObj.type == "welcome") {
+                sock.send(JSON.stringify({
+                    session_id: messageObj.session_id,
+                    type: "welcome",
+                    user_id: "53076312"
+                }));
+            }
+        }
+    });
+
+    sock.addEventListener("close", e => {
+		setTimeout(function () {
+			console.log("Reconnecting to WebSocket Server in 3 seconds");
+
+			openSocket();
+		}, 3000)
+    });
+};
+
+openSocket();
+</script>
+</body>
+</html>

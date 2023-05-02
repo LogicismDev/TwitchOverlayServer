@@ -74,35 +74,12 @@ public class OverlayWebsocketServer extends WebSocketServer {
                 if (messageObject.has("scope") && messageObject.getString("scope")
                         .startsWith("channel:read:predictions")) {
                     TokenHandle handle = TwitchOverlayServer.INSTANCE.getTokenHandle(messageObject
-                                    .getString("user_id"), messageObject.getString("scope"));
+                            .getString("user_id"), messageObject.getString("scope"));
 
                     if (handle != null) {
                         if (handle.isExpired()) {
                             try {
-                                handle.refreshToken(messageObject.getString("user_agent"));
-
-                                if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
-                                            .cancel(true);
-
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
-                                            TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                    .schedule(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            handle.setExpired(true);
-                                                        }
-                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-                                } else {
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
-                                            .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                    .schedule(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            handle.setExpired(true);
-                                                        }
-                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-                                }
+                                TwitchOverlayServer.INSTANCE.refreshHandle(messageObject.getString("user_agent"), handle);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -141,30 +118,7 @@ public class OverlayWebsocketServer extends WebSocketServer {
                     if (handle != null) {
                         if (handle.isExpired()) {
                             try {
-                                handle.refreshToken(messageObject.getString("user_agent"));
-
-                                if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
-                                            .cancel(true);
-
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
-                                            TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                    .schedule(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            handle.setExpired(true);
-                                                        }
-                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-                                } else {
-                                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
-                                            .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                                    .schedule(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            handle.setExpired(true);
-                                                        }
-                                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-                                }
+                                TwitchOverlayServer.INSTANCE.refreshHandle(messageObject.getString("user_agent"), handle);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -193,21 +147,21 @@ public class OverlayWebsocketServer extends WebSocketServer {
                         }
                     }
                 }
-
-                webSocketHandles.add(new WebSocketHandle(messageObject.getString("session_id"),
-                        messageObject.getString("user_id"), webSocket));
-
-                webSocketTimeouts.get(messageObject.getString("session_id")).cancel(true);
-                webSocketTimeouts.remove(messageObject.getString("session_id"));
-
-                webSocketPings.put(messageObject.getString("session_id"), executor
-                        .scheduleAtFixedRate(new Runnable() {
-                    @Override
-                    public void run() {
-                        webSocket.sendPing();
-                    }
-                }, 20, 20, TimeUnit.SECONDS));
             }
+
+            webSocketHandles.add(new WebSocketHandle(messageObject.getString("session_id"),
+                    messageObject.getString("user_id"), webSocket));
+
+            webSocketTimeouts.get(messageObject.getString("session_id")).cancel(true);
+            webSocketTimeouts.remove(messageObject.getString("session_id"));
+
+            webSocketPings.put(messageObject.getString("session_id"), executor
+                    .scheduleAtFixedRate(new Runnable() {
+                        @Override
+                        public void run() {
+                            webSocket.sendPing();
+                        }
+                    }, 20, 20, TimeUnit.SECONDS));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -239,12 +193,12 @@ public class OverlayWebsocketServer extends WebSocketServer {
                     null, null, tokenObject.getInt("expires_in"));
 
             ScheduledFuture appAccessTokenExpiration = executor.schedule(new Runnable() {
-                                  @Override
-                                  public void run() {
-                                      appAccessTokenHandle.setExpired(true);
-                                  }
-                              }, appAccessTokenHandle.getTimeToExpire(),
-                            TimeUnit.SECONDS);
+                                                                             @Override
+                                                                             public void run() {
+                                                                                 appAccessTokenHandle.setExpired(true);
+                                                                             }
+                                                                         }, appAccessTokenHandle.getTimeToExpire(),
+                    TimeUnit.SECONDS);
 
             TwitchOverlayServer.INSTANCE.setAppAccessTokenHandle(appAccessTokenHandle);
             TwitchOverlayServer.INSTANCE.setAppAccessTokenExpiration(appAccessTokenExpiration);

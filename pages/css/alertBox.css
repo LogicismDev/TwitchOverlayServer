@@ -1,0 +1,71 @@
+.alert-overlay {
+	position: relative;
+}
+.alert-image {
+	position: absolute;
+	top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.alert-text {
+    position: absolute;
+	top: 50%;
+  	left: 50%;
+	margin-top: 170px;
+  	transform: translate(-50%, -50%);
+}
+.alert-main-text {
+	padding-top: 30px;
+	text-align: center;
+	display: block;
+	padding-bottom: 15px;
+	font-family: Roboto;
+	font-weight: 800;
+	font-size: 1.5em;
+}
+.alert-sub-text {
+	display: block;
+	text-align: center;
+}
+@-webkit-keyframes fadeOut {
+0% {
+opacity: 1;
+}
+100% {
+opacity: 0;
+}
+}
+@keyframes fadeOut {
+0% {
+opacity: 1;
+}
+100% {
+opacity: 0;
+}
+}
+.fadeOut {
+    -webkit-animation-name: fadeOut;
+    animation-name: fadeOut;
+	animation-duration: 2s;
+}
+@-webkit-keyframes fadeIn {
+0% {
+opacity: 0;
+}
+100% {
+opacity: 1;
+}
+}
+@keyframes fadeIn {
+0% {
+opacity: 0;
+}
+100% {
+opacity: 1;
+}
+}
+.fadeIn {
+    -webkit-animation-name: fadeIn;
+    animation-name: fadeIn;
+	animation-duration: 2s;
+}

@@ -23,59 +23,75 @@ import java.util.concurrent.TimeUnit;
 public class TokenHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
-        TwitchOverlayServer.INSTANCE.getLogger().info(exchange.getRequestMethod() + " - " +
-                (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
-                        exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
-                        exchange.getRemoteAddress().getAddress()) + " - " +
-                exchange.getRequestHeaders().get("User-Agent").get(0) + " - /callback");
-        Map<String, String> queryMap = TextUtils.queryToMap(exchange.getRequestURI().getQuery());
+        try {
+            TwitchOverlayServer.INSTANCE.getLogger().info(exchange.getRequestMethod() + " - " +
+                    (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
+                            exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
+                            exchange.getRemoteAddress().getAddress()) + " - " +
+                    exchange.getRequestHeaders().get("User-Agent").get(0) + " - /callback");
+            Map<String, String> queryMap = TextUtils.queryToMap(exchange.getRequestURI().getQuery());
 
-        if (queryMap.containsKey("error")) {
-            HTTPUtils.throwError(exchange, queryMap.get("error_description").replace("+", " "));
-        } else {
-            Map<String, String> headers = new HashMap<>();
-            headers.put("User-Agent", exchange.getRequestHeaders().get("User-Agent").get(0));
+            if (queryMap.containsKey("error")) {
+                HTTPUtils.throwError(exchange, queryMap.get("error_description").replace("+", " "));
+            } else {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("User-Agent", exchange.getRequestHeaders().get("User-Agent").get(0));
 
-            BrowserData bd = BrowserClient.executePOSTRequest(new URL("https://id.twitch.tv/oauth2/token"),
-                    "client_id=" + TwitchOverlayServer.INSTANCE.getConfig().getClientID() +
-                            "&client_secret=" + TwitchOverlayServer.INSTANCE.getConfig().getClientSecret() +
-                            "&code=" + queryMap.get("code") + "&grant_type=authorization_code" +
-                            "&redirect_uri=" + TwitchOverlayServer.INSTANCE.getConfig().getCallbackURI(), headers);
+                BrowserData bd = BrowserClient.executePOSTRequest(new URL("https://id.twitch.tv/oauth2/token"),
+                        "client_id=" + TwitchOverlayServer.INSTANCE.getConfig().getClientID() +
+                                "&client_secret=" + TwitchOverlayServer.INSTANCE.getConfig().getClientSecret() +
+                                "&code=" + queryMap.get("code") + "&grant_type=authorization_code" +
+                                "&redirect_uri=" + TwitchOverlayServer.INSTANCE.getConfig().getCallbackURI(), headers);
 
-            if (bd.getResponseCode() == 200) {
-                JSONObject tokenObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
+                if (bd.getResponseCode() == 200) {
+                    JSONObject tokenObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
 
-                headers.put("Authorization", "Bearer " + tokenObject.getString("access_token"));
-                headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
+                    headers.put("Authorization", "Bearer " + tokenObject.getString("access_token"));
+                    headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
 
-                bd = BrowserClient.executeGETRequest(new URL("https://api.twitch.tv/helix/users"), headers);
+                    bd = BrowserClient.executeGETRequest(new URL("https://api.twitch.tv/helix/users"), headers);
 
-                JSONObject userObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()))
-                        .getJSONArray("data").getJSONObject(0);
+                    JSONObject userObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()))
+                            .getJSONArray("data").getJSONObject(0);
 
-                if (TwitchOverlayServer.INSTANCE.containsUserTokenHandle(userObject.getString("id"),
-                        tokenObject.getJSONArray("scope").getString(0))) {
-                    TokenHandle handle = TwitchOverlayServer.INSTANCE.getTokenHandle(userObject
-                            .getString("id"), tokenObject.getJSONArray("scope")
-                            .getString(0));
+                    if (TwitchOverlayServer.INSTANCE.containsUserTokenHandle(userObject.getString("id"),
+                            tokenObject.getJSONArray("scope").getString(0))) {
+                        TokenHandle handle = TwitchOverlayServer.INSTANCE.getTokenHandle(userObject
+                                .getString("id"), tokenObject.getJSONArray("scope")
+                                .getString(0));
 
-                    handle.setAccessToken(tokenObject.getString("access_token"));
-                    handle.setRefreshToken(tokenObject.getString("refresh_token"));
-                    handle.setTimeToExpire(tokenObject.getLong("expires_in"));
-                    handle.setExpired(false);
+                        handle.setAccessToken(tokenObject.getString("access_token"));
+                        handle.setRefreshToken(tokenObject.getString("refresh_token"));
+                        handle.setTimeToExpire(tokenObject.getLong("expires_in"));
+                        handle.setExpired(false);
 
-                    if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
-                        TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
-                                .cancel(true);
+                        if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
+                            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
+                                    .cancel(true);
 
-                        TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle, TwitchOverlayServer
-                                .INSTANCE.getWebsocketServer().getExecutor().schedule(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        handle.setExpired(true);
-                                    }
-                                }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle, TwitchOverlayServer
+                                    .INSTANCE.getWebsocketServer().getExecutor().schedule(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            handle.setExpired(true);
+                                        }
+                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                        } else {
+                            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().put(handle, TwitchOverlayServer
+                                    .INSTANCE.getWebsocketServer().getExecutor().schedule(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            handle.setExpired(true);
+                                        }
+                                    }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+                        }
                     } else {
+                        TokenHandle handle = new TokenHandle(userObject.getString("id"),
+                                tokenObject.getString("access_token"), tokenObject.getString("refresh_token"),
+                                Collections.singletonList(tokenObject.getJSONArray("scope").getString(0)),
+                                tokenObject.getLong("expires_in"));
+
+                        TwitchOverlayServer.INSTANCE.getTokenHandleList().add(handle);
                         TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().put(handle, TwitchOverlayServer
                                 .INSTANCE.getWebsocketServer().getExecutor().schedule(new Runnable() {
                                     @Override
@@ -83,142 +99,186 @@ public class TokenHandler implements HttpHandler {
                                         handle.setExpired(true);
                                     }
                                 }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+
+
+                        File tokenHandleDatabase = new File("tokenHandles.dat");
+
+                        try {
+                            TwitchOverlayServer.INSTANCE.writeTokenHandleList(tokenHandleDatabase);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
+
+                    String overlaySubBaseURL = "";
+
+                    headers.put("Content-Type", "application/json");
+
+                    if (TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().isExpired()) {
+                        TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
+                                .refreshToken("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                                        "(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
+
+
+                        if (!TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration().isDone()) {
+                            TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration()
+                                    .cancel(true);
+
+                            TwitchOverlayServer.INSTANCE.setAppAccessTokenExpiration(
+                                    TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                                            .schedule(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
+                                                            .setExpired(true);
+                                                }
+                                            }, TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
+                                                    .getTimeToExpire(), TimeUnit.SECONDS));
+                        }
+                    }
+                    headers.replace("Authorization", "Bearer " + TwitchOverlayServer.INSTANCE
+                            .getAppAccessTokenHandle().getAccessToken());
+
+                    if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:predictions")) {
+                        overlaySubBaseURL = "/predictions";
+
+                        bd = BrowserClient.executeGETRequest(new URL(
+                                "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
+
+                        JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
+
+                        if (hasEventHandler(eventSubObject, "channel.prediction.begin",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.prediction.begin", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.prediction.progress",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.prediction.progress", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.prediction.lock",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.prediction.lock", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.prediction.end",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.prediction.end", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+                    } else if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:polls")) {
+                        overlaySubBaseURL = "/polls";
+
+                        bd = BrowserClient.executeGETRequest(new URL(
+                                "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
+
+                        JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
+
+                        if (hasEventHandler(eventSubObject, "channel.poll.begin",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.poll.begin", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.poll.progress",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.poll.progress", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.poll.end",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.poll.end", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+                    } else if (tokenObject.getJSONArray("scope").getString(0).equals("bits:read")) {
+                        overlaySubBaseURL = "/alerts";
+
+                        bd = BrowserClient.executeGETRequest(new URL(
+                                "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
+
+                        JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
+
+                        if (hasEventHandler(eventSubObject, "channel.follow",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.follow", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 2);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.subscribe",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.subscribe", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.subscription.gift",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.subscription.gift", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.subscription.message",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.subscription.message", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.cheer",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.cheer", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+
+                        if (hasEventHandler(eventSubObject, "channel.raid",
+                                userObject.getString("id"), overlaySubBaseURL)) {
+                            registerEventSub("channel.raid", userObject.getString("id"),
+                                    exchange.getRequestHeaders().get("User-Agent").get(0),
+                                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
+                                    overlaySubBaseURL, 1);
+                        }
+                    }
+
+                    String response = FileUtils.fileToString(HTTPUtils.getFile("/callback.html"))
+                            .replace("{username}", userObject.getString("display_name"))
+                            .replace("{url}", TwitchOverlayServer.INSTANCE.getConfig()
+                                    .getOverlayBaseURL() + "/overlay" + overlaySubBaseURL + "?id=" +
+                                    userObject.getString("id"));
+
+                    HTTPUtils.throwSuccessHTML(exchange, response);
                 } else {
-                    TokenHandle handle = new TokenHandle(userObject.getString("id"),
-                            tokenObject.getString("access_token"), tokenObject.getString("refresh_token"),
-                            Collections.singletonList(tokenObject.getJSONArray("scope").getString(0)),
-                            tokenObject.getLong("expires_in"));
-
-                    TwitchOverlayServer.INSTANCE.getTokenHandleList().add(handle);
-                    TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().put(handle, TwitchOverlayServer
-                            .INSTANCE.getWebsocketServer().getExecutor().schedule(new Runnable() {
-                                @Override
-                                public void run() {
-                                    handle.setExpired(true);
-                                }
-                            }, handle.getTimeToExpire(), TimeUnit.SECONDS));
-
-
-                    File tokenHandleDatabase = new File("tokenHandles.dat");
-
-                    try {
-                        TwitchOverlayServer.INSTANCE.writeTokenHandleList(tokenHandleDatabase);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    HTTPUtils.throwError(exchange, "Cannot grab access token! Please reauthenticate to Twitch again!");
                 }
-
-                String overlaySubBaseURL = "";
-
-                headers.put("Content-Type", "application/json");
-
-                if (TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().isExpired()) {
-                    TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle()
-                            .refreshToken("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                                    "(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
-
-
-                    if (!TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration().isDone()) {
-                        TwitchOverlayServer.INSTANCE.getAppAccessTokenExpiration()
-                                .cancel(true);
-
-                        TwitchOverlayServer.INSTANCE.setAppAccessTokenExpiration(
-                                TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
-                                        .schedule(new Runnable() {
-                                                      @Override
-                                                      public void run() {
-                                                          TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().setExpired(true);
-                                                      }
-                                                  }, TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getTimeToExpire(),
-                                                TimeUnit.SECONDS));
-                    }
-                }
-                headers.replace("Authorization", "Bearer " + TwitchOverlayServer.INSTANCE
-                        .getAppAccessTokenHandle().getAccessToken());
-
-                if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:predictions")) {
-                    overlaySubBaseURL = "/predictions";
-
-                    bd = BrowserClient.executeGETRequest(new URL(
-                            "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
-
-                    JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
-
-                    if (hasEventHandler(eventSubObject, "channel.prediction.begin",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.prediction.begin", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-
-                    if (hasEventHandler(eventSubObject, "channel.prediction.progress",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.prediction.progress", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-
-                    if (hasEventHandler(eventSubObject, "channel.prediction.lock",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.prediction.lock", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-
-                    if (hasEventHandler(eventSubObject, "channel.prediction.end",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.prediction.end", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-                } else if (tokenObject.getJSONArray("scope").getString(0).equals("channel:read:polls")) {
-                    overlaySubBaseURL = "/polls";
-
-                    bd = BrowserClient.executeGETRequest(new URL(
-                            "https://api.twitch.tv/helix/eventsub/subscriptions"), headers);
-
-                    JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
-
-                    if (hasEventHandler(eventSubObject, "channel.poll.begin",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.poll.begin", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-
-                    if (hasEventHandler(eventSubObject, "channel.poll.progress",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.poll.progress", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-
-                    if (hasEventHandler(eventSubObject, "channel.poll.end",
-                            userObject.getString("id"), overlaySubBaseURL)) {
-                        registerEventSub("channel.poll.end", userObject.getString("id"),
-                                exchange.getRequestHeaders().get("User-Agent").get(0),
-                                TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
-                                overlaySubBaseURL);
-                    }
-                }
-
-                String response = FileUtils.fileToString(HTTPUtils.getFile("/callback.html"))
-                        .replace("{username}", userObject.getString("display_name"))
-                        .replace("{url}", TwitchOverlayServer.INSTANCE.getConfig()
-                                .getOverlayBaseURL() + "/overlay" + overlaySubBaseURL + "?id=" +
-                                userObject.getString("id"));
-
-                HTTPUtils.throwSuccessHTML(exchange, response);
-            } else {
-                HTTPUtils.throwError(exchange, "Cannot grab access token! Please reauthenticate to Twitch again!");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -240,19 +300,28 @@ public class TokenHandler implements HttpHandler {
     }
 
     public void registerEventSub(String subType, String userId, String userAgent, String accessToken
-            , String overlaySubBaseURL) throws IOException {
+            , String overlaySubBaseURL, int version) throws IOException {
         Map<String, String> headers = new HashMap<>();
         headers.put("User-Agent", userAgent);
         headers.put("Authorization", "Bearer " + accessToken);
         headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
         headers.put("Content-Type", "application/json");
 
-        JSONObject payload = new JSONObject().put("type", subType).put("version", "1")
-                .put("condition", new JSONObject().put("broadcaster_user_id", userId))
-                .put("transport", new JSONObject().put("method", "webhook").put("callback",
-                        TwitchOverlayServer.INSTANCE.getConfig().getOverlayBaseURL()
-                                + "/webhook" + overlaySubBaseURL + "/" + userId).put("secret",
+        JSONObject payload = new JSONObject().put("type", subType).put("version", String.valueOf(version)).put("transport", new JSONObject().put("method", "webhook")
+                        .put("callback", TwitchOverlayServer.INSTANCE.getConfig().getOverlayBaseURL() + "/webhook"
+                                + overlaySubBaseURL + "/" + userId).put("secret",
                         TwitchOverlayServer.INSTANCE.getConfig().getWebhookSecret()));
+
+        JSONObject condition = new JSONObject();
+        if (subType.equals("channel.follow")) {
+            condition = condition.put("broadcaster_user_id", userId).put("moderator_user_id", userId);
+        } else if (subType.equals("channel.raid")) {
+            condition = condition.put("to_broadcaster_user_id", userId);
+        } else {
+            condition = condition.put("broadcaster_user_id", userId);
+        }
+
+        payload = payload.put("condition", condition);
 
         BrowserClient.executePOSTRequest(new URL("https://api.twitch.tv/helix/eventsub/subscriptions"),
                 payload.toString(), headers);

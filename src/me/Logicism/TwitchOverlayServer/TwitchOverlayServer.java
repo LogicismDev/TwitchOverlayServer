@@ -56,7 +56,7 @@ public class TwitchOverlayServer {
             server.createContext("/webhook", new WebhookHandler());
             server.createContext("/overlay", new OverlayHandler());
 
-            ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(10);
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newCachedThreadPool();
             server.setExecutor(executor);
 
             server.start();
@@ -128,6 +128,33 @@ public class TwitchOverlayServer {
         }
 
         return null;
+    }
+
+    public void refreshHandle(String userAgent, TokenHandle handle) throws IOException {
+        handle.refreshToken(userAgent);
+
+        if (TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().containsKey(handle)) {
+            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().get(handle)
+                    .cancel(true);
+
+            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations().replace(handle,
+                    TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                            .schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    handle.setExpired(true);
+                                }
+                            }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+        } else {
+            TwitchOverlayServer.INSTANCE.getTokenHandleExpirations()
+                    .put(handle, TwitchOverlayServer.INSTANCE.getWebsocketServer().getExecutor()
+                            .schedule(new Runnable() {
+                                @Override
+                                public void run() {
+                                    handle.setExpired(true);
+                                }
+                            }, handle.getTimeToExpire(), TimeUnit.SECONDS));
+        }
     }
 
     public void readTokenHandleList(File file) throws IOException, ClassNotFoundException {
