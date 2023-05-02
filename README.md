@@ -6,6 +6,12 @@ An HTTP and WebSocket server coded in Java to provide and serve Twitch Overlays 
 
 ## Twitch Overlays
 - Predictions
+- Polls
+- Alert Box
+  - Follows
+  - Subscriptions
+  - Cheers
+  - Raids
 - More to Come...
 
 ## Features
