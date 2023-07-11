@@ -10,6 +10,7 @@ import me.Logicism.TwitchOverlayServer.ws.WebSocketHandle;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
@@ -24,9 +25,9 @@ public class WebhookHandler implements HttpHandler {
                             exchange.getRemoteAddress().getAddress()) + " - " +
                     exchange.getRequestHeaders().get("User-Agent").get(0) + " - /webhook");
             if (exchange.getRequestMethod().equals("POST")) {
-                if (exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Type".toLowerCase())) {
-                    String body = BrowserClient.requestToString(exchange.getRequestBody());
+                String body = BrowserClient.requestToString(exchange.getRequestBody());
 
+                if (exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Type".toLowerCase())) {
                     if (exchange.getRequestHeaders().get("Twitch-Eventsub-Message-Type").get(0).equals("notification")) {
                         if (exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Id".toLowerCase())
                                 && exchange.getRequestHeaders().containsKey("Twitch-Eventsub-Message-Timestamp"
@@ -111,6 +112,18 @@ public class WebhookHandler implements HttpHandler {
 
                         HTTPUtils.throwSuccess(exchange);
                     }
+                } else if (body.startsWith("data=%7b%22verification_token")) {
+                    String bodyDec = URLDecoder.decode(body.substring(5), "UTF-8");
+
+                    String user_id = exchange.getRequestURI().toString().substring(("/webhook/ko-fi/").length());
+
+                    for (WebSocketHandle handle : TwitchOverlayServer.INSTANCE.getWebsocketServer().getWebSocketHandles()) {
+                        if (handle.getUserId().equals(user_id)) {
+                            handle.getWebSocket().send(bodyDec);
+                        }
+                    }
+
+                    HTTPUtils.throwSuccess(exchange);
                 } else {
                     HTTPUtils.throwError(exchange, "Invalid Request!");
                 }
