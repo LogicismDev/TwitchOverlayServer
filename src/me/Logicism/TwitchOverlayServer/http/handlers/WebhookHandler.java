@@ -23,7 +23,9 @@ public class WebhookHandler implements HttpHandler {
                     (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
                             exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
                             exchange.getRemoteAddress().getAddress()) + " - " +
-                    exchange.getRequestHeaders().get("User-Agent").get(0) + " - /webhook");
+                    (exchange.getRequestHeaders().containsKey("User-Agent") ?
+                            exchange.getRequestHeaders().get("User-Agent").get(0) : "Unknown User-Agent")
+                    + " - /webhook");
             if (exchange.getRequestMethod().equals("POST")) {
                 String body = BrowserClient.requestToString(exchange.getRequestBody());
 

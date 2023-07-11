@@ -16,7 +16,9 @@ public class StaticPageHandler implements HttpHandler {
                 (exchange.getRequestHeaders().containsKey("X-Forwarded-For") ?
                         exchange.getRequestHeaders().get("X-Forwarded-For").get(0) :
                         exchange.getRemoteAddress().getAddress()) + " - " +
-                exchange.getRequestHeaders().get("User-Agent").get(0) + " - " + exchange.getRequestURI().toString());
+                (exchange.getRequestHeaders().containsKey("User-Agent") ?
+                        exchange.getRequestHeaders().get("User-Agent").get(0) : "Unknown User-Agent")
+                + " - /webhook");
 
         if (exchange.getRequestURI().toString().equals("/")) {
             String response = FileUtils.fileToString(HTTPUtils.getFile("/index.html"))
