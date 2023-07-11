@@ -107,12 +107,59 @@ const openSocket = () => {
 			}, 8500);
 
 			console.log("Displaying Alerts Overlay");
+		} else if (messageObj.kofi_transaction_id != undefined) {
+		    if (timeoutId != 0) {
+                clearTimeout(timeoutId);
+                timeoutId = 0;
+            }
+			if (timeoutId1 != 0) {
+                clearTimeout(timeoutId1);
+                timeoutId1 = 0;
+            }
+
+            if (document.getElementsByClassName("alerts-overlay")[0].getAttribute("style") != "display: inherit;") {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("style", "display: inherit;");
+			}
+			if (document.getElementsByClassName("alerts-overlay")[0].getAttribute("class") == "alerts-overlay fadeOut") {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("class", "alerts-overlay fadeIn");
+			}
+
+            document.getElementsByClassName("alert-main-text")[0].innerHTML = messageObj.from_name + " has donated " + messageObj.amount + " " + messageObj.currency;
+			document.getElementsByClassName("alert-sub-text")[0].innerHTML = messageObj.message;
+
+			let audioF = document.getElementsByClassName("alert-audio")[0];
+			audioF.src = "alert.mp3";
+			audioF.play();
+			audioF.onended = function() {
+				audioF.src = "https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=" + messageObj.message;
+				audioF.play();
+
+				audioF.onended = undefined;
+			};
+
+            timeoutId = setTimeout(function () {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("class", "alerts-overlay fadeOut");
+
+				console.log("Removing Alerts Overlay");
+
+				timeoutId = 0;
+			}, 7000);
+
+			timeoutId1 = setTimeout(function () {
+				document.getElementsByClassName("alerts-overlay")[0].setAttribute("style", "display: none;");
+				document.getElementsByClassName("alert-main-text")[0].innerHTML = "";
+				document.getElementsByClassName("alert-sub-text")[0].innerHTML = "";
+
+				timeoutId1 = 0;
+			}, 8500);
+
+			console.log("Displaying Alerts Overlay");
         } else {
             if (messageObj.type == "welcome") {
                 sock.send(JSON.stringify({
                     session_id: messageObj.session_id,
                     type: "welcome",
-                    user_id: "53076312"
+                    user_id: "{user_id}"
                 }));
             }
         }
