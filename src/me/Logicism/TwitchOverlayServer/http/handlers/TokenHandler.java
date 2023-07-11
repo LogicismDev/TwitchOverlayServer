@@ -270,7 +270,10 @@ public class TokenHandler implements HttpHandler {
                             .replace("{username}", userObject.getString("display_name"))
                             .replace("{url}", TwitchOverlayServer.INSTANCE.getConfig()
                                     .getOverlayBaseURL() + "/overlay" + overlaySubBaseURL + "?id=" +
-                                    userObject.getString("id"));
+                                    userObject.getString("id") + (overlaySubBaseURL.equals("/alerts") ? "<br><br>" +
+                                    "If you wish to use ko-fi.com integration, use the following Webhook URL:" +
+                                    "<br><br>" + TwitchOverlayServer.INSTANCE.getConfig().getOverlayBaseURL() +
+                                    "/webhook/ko-fi/" + userObject.getString("id") : ""));
 
                     HTTPUtils.throwSuccessHTML(exchange, response);
                 } else {
