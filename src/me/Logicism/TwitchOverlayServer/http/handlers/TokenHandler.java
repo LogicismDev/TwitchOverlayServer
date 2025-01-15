@@ -150,7 +150,7 @@ public class TokenHandler implements HttpHandler {
                         JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
 
                         if (hasEventHandler(eventSubObject, "channel.prediction.begin",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.prediction.begin", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -158,7 +158,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.prediction.progress",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.prediction.progress", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -166,7 +166,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.prediction.lock",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.prediction.lock", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -174,7 +174,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.prediction.end",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.prediction.end", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -189,7 +189,7 @@ public class TokenHandler implements HttpHandler {
                         JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
 
                         if (hasEventHandler(eventSubObject, "channel.poll.begin",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.poll.begin", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -197,7 +197,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.poll.progress",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.poll.progress", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -205,7 +205,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.poll.end",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.poll.end", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -220,7 +220,7 @@ public class TokenHandler implements HttpHandler {
                         JSONObject eventSubObject = new JSONObject(BrowserClient.requestToString(bd.getResponse()));
 
                         if (hasEventHandler(eventSubObject, "channel.follow",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.follow", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -228,7 +228,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.subscribe",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.subscribe", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -236,7 +236,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.subscription.gift",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.subscription.gift", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -244,7 +244,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.subscription.message",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.subscription.message", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -252,7 +252,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.cheer",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.cheer", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -260,7 +260,7 @@ public class TokenHandler implements HttpHandler {
                         }
 
                         if (hasEventHandler(eventSubObject, "channel.raid",
-                                userObject.getString("id"), overlaySubBaseURL)) {
+                                userObject.getString("id"), exchange.getRequestHeaders().get("User-Agent").get(0), overlaySubBaseURL)) {
                             registerEventSub("channel.raid", userObject.getString("id"),
                                     exchange.getRequestHeaders().get("User-Agent").get(0),
                                     TwitchOverlayServer.INSTANCE.getAppAccessTokenHandle().getAccessToken(),
@@ -287,7 +287,7 @@ public class TokenHandler implements HttpHandler {
         }
     }
 
-    public boolean hasEventHandler(JSONObject eventSubObject, String subType, String userId, String overlaySubBaseURL) {
+    public boolean hasEventHandler(JSONObject eventSubObject, String subType, String userId, String userAgent, String overlaySubBaseURL) throws IOException {
         for (int i = 0; i < eventSubObject.getJSONArray("data").length(); i++) {
             JSONObject eventSubObj = eventSubObject.getJSONArray("data").getJSONObject(i);
 
@@ -295,13 +295,22 @@ public class TokenHandler implements HttpHandler {
                 if (eventSubObj.getJSONObject("transport").getString("method").equals("webhook") &&
                         eventSubObj.getJSONObject("transport").getString("callback")
                                 .equals(TwitchOverlayServer.INSTANCE.getConfig().getOverlayBaseURL()
-                                        + "/webhook" + overlaySubBaseURL + "/" + userId)) {
+                                        + "/webhook" + overlaySubBaseURL + "/" + userId) &&
+                        eventSubObj.getString("status").equals("enabled")) {
+                    return true;
+                } else if (eventSubObj.getJSONObject("transport").getString("method").equals("webhook") &&
+                        eventSubObj.getJSONObject("transport").getString("callback")
+                                .equals(TwitchOverlayServer.INSTANCE.getConfig().getOverlayBaseURL()
+                                        + "/webhook" + overlaySubBaseURL + "/" + userId) &&
+                        eventSubObj.getString("status").equals("enabled")) {
+                    deleteEventSub(eventSubObject.getString("id"), userAgent, overlaySubBaseURL);
+
                     return false;
                 }
             }
         }
 
-        return true;
+        return false;
     }
 
     public void registerEventSub(String subType, String userId, String userAgent, String accessToken
@@ -330,6 +339,16 @@ public class TokenHandler implements HttpHandler {
 
         BrowserClient.executePOSTRequest(new URL("https://api.twitch.tv/helix/eventsub/subscriptions"),
                 payload.toString(), headers);
+    }
+
+    public void deleteEventSub(String eventId, String userAgent, String accessToken) throws IOException {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("User-Agent", userAgent);
+        headers.put("Authorization", "Bearer " + accessToken);
+        headers.put("Client-Id", TwitchOverlayServer.INSTANCE.getConfig().getClientID());
+        headers.put("Content-Type", "application/json");
+
+        BrowserClient.executeDELETERequest(new URL("https://api.twitch.tv/helix/eventsub/subscriptions?id=" + eventId), headers);
     }
 
 }

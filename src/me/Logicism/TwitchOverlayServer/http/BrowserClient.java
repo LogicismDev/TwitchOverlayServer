@@ -57,6 +57,28 @@ public class BrowserClient {
                 c.getInputStream() != null ? c.getInputStream() : c.getErrorStream(), c.getContentType());
     }
 
+    public static BrowserData executeDELETERequest(URL url, Map<String, String> headers) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) url.openConnection();
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36");
+        c.setConnectTimeout(30000);
+        c.setReadTimeout(30000);
+        c.setInstanceFollowRedirects(false);
+        c.setRequestMethod("DELETE");
+
+        if (headers != null) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                c.setRequestProperty(entry.getKey(), entry.getValue());
+            }
+        }
+
+        int resCode = c.getResponseCode();
+        int resLength = c.getContentLength();
+
+        return new BrowserData(c.getURL().toString(), c.getHeaderFields(), resCode, resLength,
+                c.getInputStream() != null ? c.getInputStream() : c.getErrorStream(), c.getContentType());
+    }
+
     public static String requestToString(InputStream is) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
         String s;
