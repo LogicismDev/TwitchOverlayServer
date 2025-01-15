@@ -42,3 +42,6 @@ The only mandatory files required in the pages directory are the following below
 - privacy.html
 - terms.html
 - overlay/predictions.html
+- overlay/alert.mp3
+- overlay/alerts.html
+- overlay/polls.html
