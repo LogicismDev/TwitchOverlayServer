@@ -7,6 +7,7 @@ import me.Logicism.TwitchOverlayServer.http.oauth.TokenHandle;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -22,6 +23,8 @@ public class OverlayWebsocketServer extends WebSocketServer {
     private List<WebSocketHandle> webSocketHandles = new CopyOnWriteArrayList<>();
     private Map<String, ScheduledFuture> webSocketTimeouts = new ConcurrentHashMap<>();
     private Map<String, ScheduledFuture> webSocketPings = new ConcurrentHashMap<>();
+
+    private Map<String, ScheduledFuture> mkwiiScheduledFutures = new HashMap<>();
 
     public OverlayWebsocketServer() {
         super(new InetSocketAddress(TwitchOverlayServer.INSTANCE.getConfig().getWebSocketIP(), TwitchOverlayServer
@@ -52,6 +55,11 @@ public class OverlayWebsocketServer extends WebSocketServer {
                 System.out.println("Disconnected WebSocket client");
                 webSocketHandles.remove(handle);
                 webSocketPings.remove(handle.getSessionId());
+
+                if (mkwiiScheduledFutures.containsKey(handle.getUserId())) {
+                    mkwiiScheduledFutures.get(handle.getUserId()).cancel(true);
+                    mkwiiScheduledFutures.remove(handle.getUserId());
+                }
             }
         }
     }
@@ -145,6 +153,329 @@ public class OverlayWebsocketServer extends WebSocketServer {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
+                    }
+                } else if (messageObject.has("scope") && messageObject.getString("scope")
+                        .startsWith("mkwii:read:vr")) {
+                    Map<String, String> headers = new HashMap<>();
+
+                    headers.put("User-Agent", messageObject.getString("user_agent"));
+
+                    try {
+                        if (messageObject.getString("data_type").equalsIgnoreCase("wiimmfi")) {
+                            long vr = 0;
+
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "https://wiimmfi.de/stats/mkw/?m=json"), headers);
+
+
+                            JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject object = jsonArray.getJSONObject(i);
+
+                                if (object.getString("type").equals("room")) {
+                                    JSONArray members = object.getJSONArray("members");
+
+                                    for (int i1 = 0; i1 < members.length(); i1++) {
+                                        if (members.getJSONObject(i1).getString("fc").equals(messageObject.getString("user_id")) && members.getJSONObject(i1).getLong("ev") != -1) {
+                                            vr = members.getJSONObject(i1).getLong("ev");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                            webSocket.send(vrObject.toString());
+
+                            boolean found = false;
+                            for (WebSocketHandle handle : webSocketHandles) {
+                                if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if (!found && !mkwiiScheduledFutures.containsKey(messageObject.getString("user_id"))) {
+                                mkwiiScheduledFutures.put(messageObject.getString("user_id"),
+                                        executor.scheduleAtFixedRate(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    long vr = 0;
+
+                                                    BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                                            "http://zplwii.xyz/api/groups"), headers);
+
+
+                                                    JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                                                    for (int i = 0; i < jsonArray.length(); i++) {
+                                                        JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                                        for (String key : object.keySet()) {
+                                                            JSONObject playerObject = object.getJSONObject(key);
+
+                                                            if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                                                if (playerObject.has("ev")) {
+                                                                    vr = Long.parseLong(playerObject.getString("ev"));
+                                                                }
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                                                    for (WebSocketHandle handle : webSocketHandles) {
+                                                        if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                                            handle.getWebSocket().send(vrObject.toString());
+                                                        }
+                                                    }
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        }, 10, 10, TimeUnit.SECONDS));
+                            }
+                        } else if (messageObject.getString("data_type").equalsIgnoreCase("retrorewind")) {
+                            long vr = 0;
+
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "http://zplwii.xyz/api/groups"), headers);
+
+
+                            JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                for (String key : object.keySet()) {
+                                    JSONObject playerObject = object.getJSONObject(key);
+
+                                    if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                        if (playerObject.has("ev")) {
+                                            vr = Long.parseLong(playerObject.getString("ev"));
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+
+                            JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                            webSocket.send(vrObject.toString());
+
+                            boolean found = false;
+                            for (WebSocketHandle handle : webSocketHandles) {
+                                if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if (!found && !mkwiiScheduledFutures.containsKey(messageObject.getString("user_id"))) {
+                                mkwiiScheduledFutures.put(messageObject.getString("user_id"),
+                                        executor.scheduleAtFixedRate(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    long vr = 0;
+
+                                                    BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                                            "http://zplwii.xyz/api/groups"), headers);
+
+
+                                                    JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                                                    for (int i = 0; i < jsonArray.length(); i++) {
+                                                        JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                                        for (String key : object.keySet()) {
+                                                            JSONObject playerObject = object.getJSONObject(key);
+
+                                                            if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                                                if (playerObject.has("ev")) {
+                                                                    vr = Long.parseLong(playerObject.getString("ev"));
+                                                                }
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                                                    for (WebSocketHandle handle : webSocketHandles) {
+                                                        if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                                            handle.getWebSocket().send(vrObject.toString());
+                                                        }
+                                                    }
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        }, 10, 10, TimeUnit.SECONDS));
+                            }
+                        } else if (messageObject.getString("data_type").equalsIgnoreCase("wiimmfi_battle")) {
+                            long vr = 0;
+
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "https://wiimmfi.de/stats/mkw/?m=json"), headers);
+
+
+                            JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject object = jsonArray.getJSONObject(i);
+
+                                if (object.getString("type").equals("room")) {
+                                    JSONArray members = object.getJSONArray("members");
+
+                                    for (int i1 = 0; i1 < members.length(); i1++) {
+                                        if (members.getJSONObject(i1).getString("fc").equals(messageObject.getString("user_id")) && members.getJSONObject(i1).getLong("eb") != -1) {
+                                            vr = members.getJSONObject(i1).getLong("eb");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                            webSocket.send(vrObject.toString());
+
+                            boolean found = false;
+                            for (WebSocketHandle handle : webSocketHandles) {
+                                if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if (!found && !mkwiiScheduledFutures.containsKey(messageObject.getString("user_id"))) {
+                                mkwiiScheduledFutures.put(messageObject.getString("user_id"),
+                                        executor.scheduleAtFixedRate(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    long vr = 0;
+
+                                                    BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                                            "http://zplwii.xyz/api/groups"), headers);
+
+
+                                                    JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                                                    for (int i = 0; i < jsonArray.length(); i++) {
+                                                        JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                                        for (String key : object.keySet()) {
+                                                            JSONObject playerObject = object.getJSONObject(key);
+
+                                                            if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                                                if (playerObject.has("ev")) {
+                                                                    vr = Long.parseLong(playerObject.getString("ev"));
+                                                                }
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                                                    for (WebSocketHandle handle : webSocketHandles) {
+                                                        if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                                            handle.getWebSocket().send(vrObject.toString());
+                                                        }
+                                                    }
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        }, 10, 10, TimeUnit.SECONDS));
+                            }
+                        } else if (messageObject.getString("data_type").equalsIgnoreCase("retrorewind_battle")) {
+                            long vr = 0;
+
+                            BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                    "http://zplwii.xyz/api/groups"), headers);
+
+
+                            JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                            for (int i = 0; i < jsonArray.length(); i++) {
+                                JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                for (String key : object.keySet()) {
+                                    JSONObject playerObject = object.getJSONObject(key);
+
+                                    if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                        if (playerObject.has("eb")) {
+                                            vr = Long.parseLong(playerObject.getString("eb"));
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+
+                            JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                            webSocket.send(vrObject.toString());
+
+                            boolean found = false;
+                            for (WebSocketHandle handle : webSocketHandles) {
+                                if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            if (!found && !mkwiiScheduledFutures.containsKey(messageObject.getString("user_id"))) {
+                                mkwiiScheduledFutures.put(messageObject.getString("user_id"),
+                                        executor.scheduleAtFixedRate(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    long vr = 0;
+
+                                                    BrowserData bd = BrowserClient.executeGETRequest(new URL(
+                                                            "http://zplwii.xyz/api/groups"), headers);
+
+
+                                                    JSONArray jsonArray = new JSONArray(BrowserClient.requestToString(bd.getResponse()));
+
+                                                    for (int i = 0; i < jsonArray.length(); i++) {
+                                                        JSONObject object = jsonArray.getJSONObject(i).getJSONObject("players");
+
+                                                        for (String key : object.keySet()) {
+                                                            JSONObject playerObject = object.getJSONObject(key);
+
+                                                            if (playerObject.getString("fc").equals(messageObject.getString("user_id"))) {
+                                                                if (playerObject.has("ev")) {
+                                                                    vr = Long.parseLong(playerObject.getString("ev"));
+                                                                }
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    JSONObject vrObject = new JSONObject().put("type", "vrUpdate").put("vr", vr);
+
+                                                    for (WebSocketHandle handle : webSocketHandles) {
+                                                        if (handle.getUserId().equals(messageObject.getString("user_id"))) {
+                                                            handle.getWebSocket().send(vrObject.toString());
+                                                        }
+                                                    }
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                }
+                                            }
+                                        }, 10, 10, TimeUnit.SECONDS));
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
             }

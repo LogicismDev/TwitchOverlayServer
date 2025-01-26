@@ -79,6 +79,24 @@ public class OverlayHandler implements HttpHandler {
             } else {
                 HTTPUtils.throwError(exchange, "URL does not have id query!");
             }
+        } else if (exchange.getRequestURI().toString().startsWith("/overlay/mkwiivr")) {
+            Map<String, String> queryMap = TextUtils.queryToMap(exchange.getRequestURI().getQuery());
+            if (queryMap.containsKey("id")) {
+                if (queryMap.containsKey("type")) {
+                    if (HTTPUtils.containsFile("/overlay/mkwiivr-premium/" + queryMap.get("id") + ".html")) {
+                        HTTPUtils.throwSuccessPage(exchange, HTTPUtils.getFile("/overlay/mkwiivr-premium/" + queryMap.get("id") + ".html"));
+                    } else {
+                        String response = FileUtils.fileToString(HTTPUtils.getFile("/overlay/mkwiivr.html"))
+                                .replace("{user_id}", queryMap.get("id")).replace("{type}", queryMap.get("type"));
+
+                        HTTPUtils.throwSuccessHTML(exchange, response);
+                    }
+                } else {
+                    HTTPUtils.throwError(exchange, "URL does not have type query!");
+                }
+            } else {
+                HTTPUtils.throwError(exchange, "URL does not have id query!");
+            }
         } else {
             HTTPUtils.throwError(exchange, "Cannot find that overlay!");
         }
