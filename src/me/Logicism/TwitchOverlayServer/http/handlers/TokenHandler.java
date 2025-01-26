@@ -35,6 +35,14 @@ public class TokenHandler implements HttpHandler {
 
             if (queryMap.containsKey("error")) {
                 HTTPUtils.throwError(exchange, queryMap.get("error_description").replace("+", " "));
+            } else if (queryMap.containsKey("data_type")) {
+                String response = FileUtils.fileToString(HTTPUtils.getFile("/callback.html"))
+                        .replace("{username}", "User")
+                        .replace("{url}", TwitchOverlayServer.INSTANCE.getConfig()
+                                .getOverlayBaseURL() + "/overlay/mkwiivr" + "?id=" +
+                                queryMap.get("id") + "&type=" + queryMap.get("data_type"));
+
+                HTTPUtils.throwSuccessHTML(exchange, response);
             } else {
                 Map<String, String> headers = new HashMap<>();
                 headers.put("User-Agent", exchange.getRequestHeaders().get("User-Agent").get(0));
